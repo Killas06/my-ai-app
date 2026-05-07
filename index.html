@@ -273,7 +273,7 @@
     <div class="logo">✦</div>
     <div class="header-info">
       <div class="header-title">AI Assistant</div>
-      <div class="header-sub"><span class="dot"></span> <span id="status-text">Gemini 2.0 Flash · Έτοιμο</span></div>
+      <div class="header-sub"><span class="dot"></span> <span id="status-text">Gemini 1.5 Flash · Έτοιμο</span></div>
     </div>
     <div class="header-actions">
       <button class="btn-icon" id="btn-system" onclick="toggleSystem()">⚙️ <span>System</span></button>
@@ -514,7 +514,7 @@ async function sendMessage() {
   });
 
   try {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -529,7 +529,7 @@ async function sendMessage() {
     const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || '(Δεν ήρθε απάντηση)';
     history.push({ role: 'assistant', content: reply });
     addMessage('ai', reply);
-    document.getElementById('status-text').textContent = 'Gemini 2.0 Flash · Έτοιμο';
+    document.getElementById('status-text').textContent = 'Gemini 1.5 Flash · Έτοιμο';
   } catch(err) {
     hideTyping();
     addMessage('ai', '⚠️ Σφάλμα: ' + err.message);
