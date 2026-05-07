@@ -258,10 +258,10 @@
 <div id="key-modal">
   <div class="modal-card">
     <div style="font-size:28px;margin-bottom:16px">🔑</div>
-    <h2>Anthropic API Key</h2>
-    <p>Για να λειτουργήσει η εφαρμογή χρειάζεται το δικό σου API key από την Anthropic. Είναι δωρεάν να αποκτήσεις και αποθηκεύεται μόνο στη συσκευή σου.<br><br>
-    Πάρε το από: <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a></p>
-    <input type="password" id="api-key-input" placeholder="sk-ant-api03-..." autocomplete="off" />
+    <h2>Google Gemini API Key</h2>
+    <p>Για να λειτουργήσει η εφαρμογή χρειάζεται το δικό σου API key από το Google AI Studio. Είναι <strong>εντελώς δωρεάν</strong> και αποθηκεύεται μόνο στη συσκευή σου.<br><br>
+    Πάρε το δωρεάν από: <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a></p>
+    <input type="password" id="api-key-input" placeholder="AIza..." autocomplete="off" />
     <button class="btn-primary" onclick="saveKey()">Αποθήκευση & Εκκίνηση ✦</button>
     <p class="key-note">🔒 Αποθηκεύεται μόνο στη συσκευή σου (localStorage)</p>
   </div>
@@ -273,7 +273,7 @@
     <div class="logo">✦</div>
     <div class="header-info">
       <div class="header-title">AI Assistant</div>
-      <div class="header-sub"><span class="dot"></span> <span id="status-text">Claude Sonnet 4 · Έτοιμο</span></div>
+      <div class="header-sub"><span class="dot"></span> <span id="status-text">Gemini 2.0 Flash · Έτοιμο</span></div>
     </div>
     <div class="header-actions">
       <button class="btn-icon" id="btn-system" onclick="toggleSystem()">⚙️ <span>System</span></button>
@@ -328,7 +328,7 @@
 <input type="file" id="img-input" accept="image/*" style="display:none" onchange="handleImage(event)">
 
 <script>
-let apiKey = localStorage.getItem('anthropic_key') || '';
+let apiKey = localStorage.getItem('gemini_key') || '';
 let history = [];
 let webSearch = false;
 let pendingFile = null;
@@ -340,14 +340,14 @@ if (apiKey) document.getElementById('key-modal').style.display = 'none';
 
 function saveKey() {
   const val = document.getElementById('api-key-input').value.trim();
-  if (!val.startsWith('sk-')) return alert('Το key πρέπει να ξεκινάει με sk-ant-...');
+  if (!val) return alert('Βάλε το API key σου!');
   apiKey = val;
-  localStorage.setItem('anthropic_key', val);
+  localStorage.setItem('gemini_key', val);
   document.getElementById('key-modal').style.display = 'none';
 }
 
 function changeKey() {
-  localStorage.removeItem('anthropic_key');
+  localStorage.removeItem('gemini_key');
   document.getElementById('api-key-input').value = '';
   document.getElementById('key-modal').style.display = 'flex';
 }
@@ -503,32 +503,33 @@ async function sendMessage() {
   showTyping();
 
   const systemPrompt = document.getElementById('system-prompt').value;
-  const body = {
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 1500,
-    system: systemPrompt,
-    messages: history
-  };
-  if (webSearch) body.tools = [{ type:'web_search_20250305', name:'web_search' }];
+
+  // Build Gemini contents array from history
+  const geminiContents = history.map(msg => {
+    const role = msg.role === 'assistant' ? 'model' : 'user';
+    const parts = typeof msg.content === 'string'
+      ? [{ text: msg.content }]
+      : msg.content.map(c => c.type === 'text' ? { text: c.text } : { inlineData: { mimeType: c.source.media_type, data: c.source.data } });
+    return { role, parts };
+  });
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify(body)
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: systemPrompt }] },
+        contents: geminiContents,
+        generationConfig: { maxOutputTokens: 1500 }
+      })
     });
     const data = await res.json();
     hideTyping();
     if (data.error) throw new Error(data.error.message);
-    const reply = data.content.filter(b => b.type==='text').map(b => b.text).join('\n');
-    history.push({ role:'assistant', content: reply });
+    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || '(Δεν ήρθε απάντηση)';
+    history.push({ role: 'assistant', content: reply });
     addMessage('ai', reply);
-    document.getElementById('status-text').textContent = 'Claude Sonnet 4 · Έτοιμο';
+    document.getElementById('status-text').textContent = 'Gemini 2.0 Flash · Έτοιμο';
   } catch(err) {
     hideTyping();
     addMessage('ai', '⚠️ Σφάλμα: ' + err.message);
